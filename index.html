@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI麻雀バトル</title>
+
+<style>
+body {
+  font-family: sans-serif;
+  background: #0b6623;
+  color: white;
+  text-align: center;
+  margin: 0;
+}
+
+#table {
+  max-width: 520px;
+  margin: auto;
+  padding: 10px;
+}
+
+#river {
+  min-height: 90px;
+  background: #145a32;
+  padding: 8px;
+  margin: 10px 0;
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+#hand {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tile {
+  width: 34px;
+  height: 48px;
+  margin: 2px;
+  border-radius: 6px;
+  background: linear-gradient(white, #ddd);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  box-shadow: 1px 2px 4px rgba(0,0,0,0.5);
+  cursor: pointer;
+}
+
+.m { color:#e74c3c; }
+.p { color:#3498db; }
+.s { color:#2ecc71; }
+.z { color:#000; }
+</style>
+</head>
+
+<body>
+
+<h2>AI麻雀バトル</h2>
+
+<div id="table">
+  <div id="river"></div>
+  <div id="hand"></div>
+</div>
+
+<button onclick="startGame()">開始</button>
+
+<script>
+const suits=['m','p','s'];
+const honors=['E','S','W','N','P','F','C'];
+
+let wall=[], players=[], discards=[[],[],[],[]];
+let turn=0;
+let opponentRiichi=[false,false,false,false];
+
+// ===== 初期化 =====
+function buildWall(){
+  wall=[];
+  for(let s of suits){
+    for(let i=1;i<=9;i++) for(let k=0;k<4;k++) wall.push(s+i);
+  }
+  honors.forEach(h=>{ for(let k=0;k<4;k++) wall.push(h); });
+  shuffle(wall);
+}
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    let j=Math.random()*(i+1)|0;
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+}
+
+function startGame(){
+  buildWall();
+  players=[[],[],[],[]];
+  discards=[[],[],[],[]];
+
+  for(let i=0;i<4;i++){
+    for(let j=0;j<13;j++) players[i].push(wall.pop());
+    players[i].sort();
+  }
+
+  turn=0;
+  nextTurn();
+}
+
+// ===== 表示 =====
+function getTileClass(t){
+  if(t.length===1) return 'tile z';
+  return 'tile '+t[0];
+}
+
+function render(){
+  let h=document.getElementById('hand');
+  h.innerHTML='';
+
+  players[0].forEach((t,i)=>{
+    let el=document.createElement('div');
+    el.className=getTileClass(t);
+    el.textContent=t;
+    el.onclick=()=>discard(i);
+    h.appendChild(el);
+  });
+
+  renderRiver();
+}
+
+function renderRiver(){
+  let r=document.getElementById('river');
+  r.innerHTML='';
+
+  discards[0].forEach(t=>{
+    let el=document.createElement('div');
+    el.className=getTileClass(t);
+    el.textContent=t;
+    r.appendChild(el);
+  });
+}
+
+// ===== ターン =====
+function nextTurn(){
+  let hand=players[turn];
+  hand.push(wall.pop());
+  hand.sort();
+
+  if(turn!==0 && isTenpai(hand)){
+    opponentRiichi[turn]=true;
+  }
+
+  if(checkWin(hand)){
+    alert("和了！");
+    return;
+  }
+
+  if(turn===0) render();
+  else{
+    let idx=aiDiscard(hand,turn);
+    let tile=hand[idx];
+    hand.splice(idx,1);
+    discards[turn].push(tile);
+
+    turn=(turn+1)%4;
+    setTimeout(nextTurn,200);
+  }
+}
+
+// ===== 打牌 =====
+function discard(i){
+  let tile=players[0][i];
+  players[0].splice(i,1);
+  discards[0].push(tile);
+
+  turn=1;
+  setTimeout(nextTurn,200);
+}
+
+// ===== 和了判定（簡易） =====
+function checkWin(hand){
+  return getAllMeldPatterns(hand).length>0;
+}
+
+// ===== 面子分解 =====
+function getAllMeldPatterns(hand){
+  if(hand.length!==14) return [];
+  let tiles=[...hand].sort();
+  let results=[];
+
+  for(let i=0;i<tiles.length-1;i++){
+    if(tiles[i]===tiles[i+1]){
+      let rest=tiles.slice();
+      let pair=rest.splice(i,2);
+      search(rest,[pair],results);
+    }
+  }
+  return results;
+}
+
+function search(tiles,current,results){
+  if(tiles.length===0){
+    results.push(current);
+    return;
+  }
+
+  let t=tiles[0];
+
+  if(tiles.filter(x=>x===t).length>=3){
+    let rest=tiles.slice();
+    let meld=[];
+    for(let i=0,c=0;i<rest.length&&c<3;i++){
+      if(rest[i]===t){ meld.push(rest.splice(i,1)[0]); i--; c++; }
+    }
+    search(rest,[...current, meld],results);
+  }
+
+  if(t.length===2){
+    let s=t[0],n=parseInt(t[1]);
+    let t2=s+(n+1),t3=s+(n+2);
+
+    if(tiles.includes(t2)&&tiles.includes(t3)){
+      let rest=tiles.slice();
+      [t,t2,t3].forEach(v=>{
+        let idx=rest.indexOf(v);
+        rest.splice(idx,1);
+      });
+      search(rest,[...current,[t,t2,t3]],results);
+    }
+  }
+}
+
+// ===== テンパイ =====
+function isTenpai(hand){
+  for(let s of suits){
+    for(let i=1;i<=9;i++){
+      if(checkWin([...hand,s+i])) return true;
+    }
+  }
+  return false;
+}
+
+// ===== シャンテン =====
+function calcShanten(hand){
+  return 8 - Math.floor(hand.length/3)*2;
+}
+
+// ===== 受け入れ =====
+function calcUkeire(hand){
+  let count=0;
+  for(let s of suits){
+    for(let i=1;i<=9;i++){
+      if(calcShanten([...hand,s+i]) < calcShanten(hand)) count++;
+    }
+  }
+  return count;
+}
+
+// ===== AI =====
+function aiDiscard(hand,player){
+  let best=0, bestScore=-999;
+
+  for(let i=0;i<hand.length;i++){
+    let tile=hand[i];
+    let temp=[...hand];
+    temp.splice(i,1);
+
+    let shanten=calcShanten(temp);
+    let ukeire=calcUkeire(temp);
+
+    let score = -shanten*10 + ukeire;
+
+    if(isDanger(tile)) score -= 50;
+
+    if(score>bestScore){
+      bestScore=score;
+      best=i;
+    }
+  }
+
+  return best;
+}
+
+// ===== 守備 =====
+function isDanger(tile){
+  for(let i=0;i<4;i++){
+    if(opponentRiichi[i]){
+      if(!discards[i].includes(tile)) return true;
+    }
+  }
+  return false;
+}
+</script>
+
+</body>
+</html>
