@@ -1,297 +1,282 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI麻雀バトル</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultimate Mobile Mahjong</title>
+    <style>
+        :root { --bg: #051a10; --table: #1e633d; --accent: #ffcc00; --white: #fdfdfd; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; background: var(--bg); color: white; font-family: sans-serif; overflow: hidden; height: 100vh; }
+        
+        #game-screen { position: relative; width: 100vw; height: 100vh; background: radial-gradient(circle, var(--table) 0%, #051a10 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
-<style>
-body {
-  font-family: sans-serif;
-  background: #0b6623;
-  color: white;
-  text-align: center;
-  margin: 0;
-}
+        /* プレイヤーレイアウト */
+        .player-area { position: absolute; display: flex; flex-direction: column; align-items: center; transition: 0.3s; }
+        .south { bottom: 10px; width: 100%; }
+        .north { top: 10px; transform: rotate(180deg); }
+        .east { right: 10px; transform: rotate(-90deg); }
+        .west { left: 10px; transform: rotate(90deg); }
 
-#table {
-  max-width: 520px;
-  margin: auto;
-  padding: 10px;
-}
+        /* 牌のデザイン */
+        .hand { display: flex; gap: 1px; height: 50px; align-items: flex-end; justify-content: center; }
+        .tile { width: 30px; height: 44px; background: var(--white); color: #222; border-radius: 3px; border-bottom: 3px solid #bbb; 
+                display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; position: relative; cursor: pointer; }
+        .tile.hidden { background: linear-gradient(#3d7a55, #2a5a3a); color: transparent; border-bottom-color: #1a3a2a; }
+        .tile.tsumo { margin-left: 8px; }
+        .tile.dora { box-shadow: 0 0 8px var(--accent); border-color: var(--accent); }
+        .m { color: #d32f2f; } .p { color: #1976d2; } .s { color: #388e3c; }
+        .suit-mark { font-size: 8px; margin-top: -2px; }
 
-#river {
-  min-height: 90px;
-  background: #145a32;
-  padding: 8px;
-  margin: 10px 0;
-  border-radius: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-}
+        /* 河 */
+        .river { display: grid; grid-template-columns: repeat(6, 20px); gap: 1px; width: 126px; height: 70px; margin: 5px; }
+        .river .tile { width: 20px; height: 28px; font-size: 11px; border-bottom-width: 2px; cursor: default; }
 
-#hand {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-}
+        /* センターパネル */
+        #center-panel { width: 140px; height: 100px; background: rgba(0,0,0,0.4); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .dora-box { display: flex; gap: 4px; margin-top: 5px; }
+        .riichi-stick { width: 60px; height: 4px; background: white; border-radius: 2px; margin: 2px; display: none; position: relative; }
+        .riichi-stick::after { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 3px; height: 3px; background: red; border-radius: 50%; }
 
-.tile {
-  width: 34px;
-  height: 48px;
-  margin: 2px;
-  border-radius: 6px;
-  background: linear-gradient(white, #ddd);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  box-shadow: 1px 2px 4px rgba(0,0,0,0.5);
-  cursor: pointer;
-}
+        /* UI コントロール */
+        #controls { position: absolute; bottom: 130px; display: flex; gap: 8px; z-index: 100; pointer-events: none; }
+        button { padding: 10px 15px; border-radius: 20px; border: none; background: #333; color: #777; font-weight: bold; pointer-events: auto; display: none; }
+        button.active { display: block; background: #e67e22; color: white; box-shadow: 0 3px 0 #a04000; cursor: pointer; }
+        button#btn-riichi.active { background: #e74c3c; }
 
-.m { color:#e74c3c; }
-.p { color:#3498db; }
-.s { color:#2ecc71; }
-.z { color:#000; }
-</style>
+        /* 情報表示 */
+        .info { background: rgba(0,0,0,0.8); padding: 3px 10px; border-radius: 4px; font-size: 11px; margin-bottom: 2px; border: 1px solid transparent; min-width: 80px; text-align: center; }
+        .turn-active { border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+        /* 演出オーバーレイ */
+        #flash-text { position: fixed; font-size: 60px; font-weight: bold; color: white; text-shadow: 0 0 15px red; z-index: 500; display: none; animation: pop 0.6s ease-out; pointer-events: none; }
+        @keyframes pop { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1.2); opacity: 1; } }
+
+        #result-screen { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+    </style>
 </head>
-
 <body>
 
-<h2>AI麻雀バトル</h2>
+<div id="game-screen">
+    <div id="flash-text"></div>
+    <div id="center-panel">
+        <div id="kyoku-text">東1局</div>
+        <div class="dora-box">ドラ: <div id="dora-tile" class="tile" style="width:20px; height:28px; font-size:10px;">?</div></div>
+        <div id="wall-count" style="margin-top:5px;">山: 70</div>
+    </div>
 
-<div id="table">
-  <div id="river"></div>
-  <div id="hand"></div>
+    <div class="player-area north" id="p2-area">
+        <div class="info" id="p2-info">CPU 2: 25000</div>
+        <div class="river" id="p2-river"></div>
+        <div class="hand" id="p2-hand"></div>
+    </div>
+    <div class="player-area east" id="p1-area">
+        <div class="info" id="p1-info">CPU 1: 25000</div>
+        <div class="river" id="p1-river"></div>
+        <div class="hand" id="p1-hand"></div>
+    </div>
+    <div class="player-area west" id="p3-area">
+        <div class="info" id="p3-info">CPU 3: 25000</div>
+        <div class="river" id="p3-river"></div>
+        <div class="hand" id="p3-hand"></div>
+    </div>
+    <div class="player-area south" id="p0-area">
+        <div id="controls">
+            <button id="btn-chii" onclick="handleMeld('CHII')">チー</button>
+            <button id="btn-pon" onclick="handleMeld('PON')">ポン</button>
+            <button id="btn-kan" onclick="handleMeld('KAN')">カン</button>
+            <button id="btn-riichi" onclick="startRiichi()">リーチ</button>
+            <button id="btn-ron" onclick="finish('RON')">ロン</button>
+            <button id="btn-tsumo" onclick="finish('TSUMO')">ツモ</button>
+            <button id="btn-pass" onclick="cancelAction()">パス</button>
+        </div>
+        <div class="river" id="p0-river"></div>
+        <div class="riichi-stick" id="p0-riichi-stick"></div>
+        <div style="display:flex; align-items:flex-end;">
+            <div class="hand" id="p0-hand"></div>
+            <div id="p0-melds" style="display:flex; gap:5px; margin-left:10px;"></div>
+        </div>
+        <div class="info" id="p0-info">YOU: 25000</div>
+    </div>
 </div>
 
-<button onclick="startGame()">開始</button>
+<div id="result-screen">
+    <h1 id="res-title">和了</h1>
+    <div id="res-yaku" style="font-size: 20px; color: var(--accent); margin: 10px;"></div>
+    <div id="res-score" style="font-size: 32px; margin-bottom: 20px;"></div>
+    <button class="active" style="display:block" onclick="location.reload()">次の対局</button>
+</div>
 
 <script>
-const suits=['m','p','s'];
-const honors=['E','S','W','N','P','F','C'];
+/**
+ * Mahjong Logic Final
+ */
+const SUITS = [{n:'萬', c:'m'}, {n:'筒', c:'p'}, {n:'索', c:'s'}];
+let deck = [], players = [], turn = 0, dora = null, lastDiscard = null, isWaiting = false, isRiichiPending = false;
 
-let wall=[], players=[], discards=[[],[],[],[]];
-let turn=0;
-let opponentRiichi=[false,false,false,false];
+function init() {
+    deck = [];
+    SUITS.forEach(s => { for(let v=1; v<=9; v++) for(let n=0; n<4; n++) deck.push({s: s.n, v, c: s.c}); });
+    deck.sort(() => Math.random() - 0.5);
+    
+    const doraCard = deck.pop();
+    dora = { c: doraCard.c, v: doraCard.v === 9 ? 1 : doraCard.v + 1 };
+    const dEl = document.getElementById('dora-tile');
+    dEl.innerHTML = `<span>${doraCard.v}</span><span class="suit-mark">${doraCard.s}</span>`;
+    dEl.classList.add(doraCard.c);
 
-// ===== 初期化 =====
-function buildWall(){
-  wall=[];
-  for(let s of suits){
-    for(let i=1;i<=9;i++) for(let k=0;k<4;k++) wall.push(s+i);
-  }
-  honors.forEach(h=>{ for(let k=0;k<4;k++) wall.push(h); });
-  shuffle(wall);
+    players = Array.from({length:4}, (_, i) => ({
+        id: i, score: 25000, hand: [], river: [], melds: [], isAI: i !== 0, riichi: false, menzen: true
+    }));
+
+    players.forEach(p => p.hand = deck.splice(0, 13).sort(sortFunc));
+    startTurn();
 }
 
-function shuffle(a){
-  for(let i=a.length-1;i>0;i--){
-    let j=Math.random()*(i+1)|0;
-    [a[i],a[j]]=[a[j],a[i]];
-  }
-}
+function sortFunc(a, b) { return a.c !== b.c ? a.c.localeCompare(b.c) : a.v - b.v; }
 
-function startGame(){
-  buildWall();
-  players=[[],[],[],[]];
-  discards=[[],[],[],[]];
+function startTurn() {
+    if(deck.length <= 14) return finish('DRAW');
+    const p = players[turn];
+    const t = deck.shift();
+    p.hand.push(t);
+    updateUI();
 
-  for(let i=0;i<4;i++){
-    for(let j=0;j<13;j++) players[i].push(wall.pop());
-    players[i].sort();
-  }
-
-  turn=0;
-  nextTurn();
-}
-
-// ===== 表示 =====
-function getTileClass(t){
-  if(t.length===1) return 'tile z';
-  return 'tile '+t[0];
-}
-
-function render(){
-  let h=document.getElementById('hand');
-  h.innerHTML='';
-
-  players[0].forEach((t,i)=>{
-    let el=document.createElement('div');
-    el.className=getTileClass(t);
-    el.textContent=t;
-    el.onclick=()=>discard(i);
-    h.appendChild(el);
-  });
-
-  renderRiver();
-}
-
-function renderRiver(){
-  let r=document.getElementById('river');
-  r.innerHTML='';
-
-  discards[0].forEach(t=>{
-    let el=document.createElement('div');
-    el.className=getTileClass(t);
-    el.textContent=t;
-    r.appendChild(el);
-  });
-}
-
-// ===== ターン =====
-function nextTurn(){
-  let hand=players[turn];
-  hand.push(wall.pop());
-  hand.sort();
-
-  if(turn!==0 && isTenpai(hand)){
-    opponentRiichi[turn]=true;
-  }
-
-  if(checkWin(hand)){
-    alert("和了！");
-    return;
-  }
-
-  if(turn===0) render();
-  else{
-    let idx=aiDiscard(hand,turn);
-    let tile=hand[idx];
-    hand.splice(idx,1);
-    discards[turn].push(tile);
-
-    turn=(turn+1)%4;
-    setTimeout(nextTurn,200);
-  }
-}
-
-// ===== 打牌 =====
-function discard(i){
-  let tile=players[0][i];
-  players[0].splice(i,1);
-  discards[0].push(tile);
-
-  turn=1;
-  setTimeout(nextTurn,200);
-}
-
-// ===== 和了判定（簡易） =====
-function checkWin(hand){
-  return getAllMeldPatterns(hand).length>0;
-}
-
-// ===== 面子分解 =====
-function getAllMeldPatterns(hand){
-  if(hand.length!==14) return [];
-  let tiles=[...hand].sort();
-  let results=[];
-
-  for(let i=0;i<tiles.length-1;i++){
-    if(tiles[i]===tiles[i+1]){
-      let rest=tiles.slice();
-      let pair=rest.splice(i,2);
-      search(rest,[pair],results);
+    if(!p.isAI) {
+        if(p.riichi) { setTimeout(() => discard(p, p.hand.length-1), 600); return; }
+        checkSelfActions();
+    } else {
+        setTimeout(() => aiLogic(p), 600);
     }
-  }
-  return results;
 }
 
-function search(tiles,current,results){
-  if(tiles.length===0){
-    results.push(current);
-    return;
-  }
+function checkSelfActions() {
+    const p = players[0];
+    if(checkWin(p.hand)) document.getElementById('btn-tsumo').classList.add('active');
+    if(p.menzen && !p.riichi && checkTenpai(p.hand)) document.getElementById('btn-riichi').classList.add('active');
+}
 
-  let t=tiles[0];
+function aiLogic(p) {
+    if(checkWin(p.hand)) return finish('RON_AI'); // 簡易
+    discard(p, 0); 
+}
 
-  if(tiles.filter(x=>x===t).length>=3){
-    let rest=tiles.slice();
-    let meld=[];
-    for(let i=0,c=0;i<rest.length&&c<3;i++){
-      if(rest[i]===t){ meld.push(rest.splice(i,1)[0]); i--; c++; }
+function discard(p, idx) {
+    lastDiscard = p.hand.splice(idx, 1)[0];
+    p.river.push(lastDiscard);
+    if(!p.riichi) p.hand.sort(sortFunc);
+    updateUI();
+
+    // 他者の介入チェック
+    if(turn !== 0) {
+        const human = players[0];
+        let canPon = human.hand.filter(t => t.c === lastDiscard.c && t.v === lastDiscard.v).length >= 2;
+        let canChii = turn === 3 && checkChiiPossible(human.hand, lastDiscard);
+        let canRon = checkWin([...human.hand, lastDiscard]);
+
+        if(canPon || canChii || canRon) {
+            isWaiting = true;
+            if(canPon) document.getElementById('btn-pon').classList.add('active');
+            if(canChii) document.getElementById('btn-chii').classList.add('active');
+            if(canRon) document.getElementById('btn-ron').classList.add('active');
+            document.getElementById('btn-pass').classList.add('active');
+            return;
+        }
     }
-    search(rest,[...current, meld],results);
-  }
+    turn = (turn + 1) % 4;
+    setTimeout(startTurn, 400);
+}
 
-  if(t.length===2){
-    let s=t[0],n=parseInt(t[1]);
-    let t2=s+(n+1),t3=s+(n+2);
-
-    if(tiles.includes(t2)&&tiles.includes(t3)){
-      let rest=tiles.slice();
-      [t,t2,t3].forEach(v=>{
-        let idx=rest.indexOf(v);
-        rest.splice(idx,1);
-      });
-      search(rest,[...current,[t,t2,t3]],results);
+function handleMeld(type) {
+    const h = players[0];
+    h.menzen = false;
+    flash(type);
+    if(type === 'PON') {
+        const matches = h.hand.filter(t => t.v === lastDiscard.v && t.c === lastDiscard.c).slice(0, 2);
+        matches.forEach(m => h.hand.splice(h.hand.indexOf(m), 1));
+        h.melds.push([lastDiscard, ...matches]);
     }
-  }
+    // チー/カンの詳細処理は省略しつつ構造維持
+    players[turn].river.pop();
+    turn = 0;
+    cancelAction();
+    updateUI();
 }
 
-// ===== テンパイ =====
-function isTenpai(hand){
-  for(let s of suits){
-    for(let i=1;i<=9;i++){
-      if(checkWin([...hand,s+i])) return true;
+function startRiichi() { isRiichiPending = true; flash("REACH"); document.getElementById('btn-riichi').classList.remove('active'); }
+
+function checkTenpai(hand) {
+    for(let v=1; v<=9; v++) {
+        for(let c of ['m','p','s']) if(checkWin([...hand, {v, c}])) return true;
     }
-  }
-  return false;
+    return false;
 }
 
-// ===== シャンテン =====
-function calcShanten(hand){
-  return 8 - Math.floor(hand.length/3)*2;
-}
-
-// ===== 受け入れ =====
-function calcUkeire(hand){
-  let count=0;
-  for(let s of suits){
-    for(let i=1;i<=9;i++){
-      if(calcShanten([...hand,s+i]) < calcShanten(hand)) count++;
+function checkWin(hand) {
+    const sHand = [...hand].sort(sortFunc);
+    const isMentsu = (arr) => {
+        if(arr.length === 0) return true;
+        if(arr[0].v === arr[1]?.v && arr[0].v === arr[2]?.v && arr[0].c === arr[1]?.c && arr[0].c === arr[2]?.c) return isMentsu(arr.slice(3));
+        let i2 = arr.findIndex(t => t.v === arr[0].v+1 && t.c === arr[0].c), i3 = arr.findIndex(t => t.v === arr[0].v+2 && t.c === arr[0].c);
+        if(i2 !== -1 && i3 !== -1) {
+            let n = [...arr]; n.splice(i3, 1); n.splice(i2, 1); n.splice(0, 1);
+            return isMentsu(n);
+        }
+        return false;
+    };
+    for(let i=0; i<sHand.length-1; i++) {
+        if(sHand[i].v === sHand[i+1].v && sHand[i].c === sHand[i+1].c) {
+            let c = [...sHand]; c.splice(i, 2);
+            if(isMentsu(c)) return true;
+        }
     }
-  }
-  return count;
+    return false;
 }
 
-// ===== AI =====
-function aiDiscard(hand,player){
-  let best=0, bestScore=-999;
-
-  for(let i=0;i<hand.length;i++){
-    let tile=hand[i];
-    let temp=[...hand];
-    temp.splice(i,1);
-
-    let shanten=calcShanten(temp);
-    let ukeire=calcUkeire(temp);
-
-    let score = -shanten*10 + ukeire;
-
-    if(isDanger(tile)) score -= 50;
-
-    if(score>bestScore){
-      bestScore=score;
-      best=i;
-    }
-  }
-
-  return best;
+function updateUI() {
+    players.forEach(p => {
+        const hEl = document.getElementById(`p${p.id}-hand`);
+        hEl.innerHTML = '';
+        p.hand.forEach((t, i) => {
+            const div = document.createElement('div');
+            div.className = `tile ${p.isAI ? 'hidden' : ''} ${t.c} ${i===p.hand.length-1?'tsumo':''} ${t.c===dora.c && t.v===dora.v?'dora':''}`;
+            div.innerHTML = `<span>${t.v}</span><span class="suit-mark">${t.s}</span>`;
+            if(!p.isAI && turn === 0 && !isWaiting) div.onclick = () => {
+                if(isRiichiPending) { p.riichi = true; isRiichiPending = false; document.getElementById('p0-riichi-stick').style.display='block'; }
+                discard(p, i);
+            };
+            hEl.appendChild(div);
+        });
+        const rEl = document.getElementById(`p${p.id}-river`); rEl.innerHTML = '';
+        p.river.forEach(t => { rEl.innerHTML += `<div class="tile ${t.c}">${t.v}</div>`; });
+        document.getElementById(`p${p.id}-info`).className = `info ${turn === p.id ? 'turn-active' : ''}`;
+        document.getElementById(`p${p.id}-info`).innerText = `${p.isAI?'CPU'+p.id:'YOU'}: ${p.score}`;
+    });
+    document.getElementById('wall-count').innerText = `山: ${deck.length}`;
 }
 
-// ===== 守備 =====
-function isDanger(tile){
-  for(let i=0;i<4;i++){
-    if(opponentRiichi[i]){
-      if(!discards[i].includes(tile)) return true;
-    }
-  }
-  return false;
+function flash(t) { const f = document.getElementById('flash-text'); f.innerText = t; f.style.display = 'block'; setTimeout(() => f.style.display='none', 800); }
+function cancelAction() { document.querySelectorAll('#controls button').forEach(b => b.classList.remove('active')); isWaiting = false; if(!isWaiting && turn !== 0) { turn=(turn+1)%4; startTurn(); } }
+
+function finish(type) {
+    const res = document.getElementById('result-screen');
+    res.style.display = 'flex';
+    if(type === 'DRAW') { document.getElementById('res-title').innerText = "流局"; return; }
+    
+    // 簡易点数計算
+    let han = players[0].riichi ? 2 : 1;
+    let fu = 30;
+    let score = Math.pow(2, han+2) * fu * 4;
+    document.getElementById('res-yaku').innerText = (players[0].riichi ? "立直 " : "") + "断么九 / 門前清自摸和";
+    document.getElementById('res-score').innerText = score + "点";
 }
+
+function checkChiiPossible(hand, last) {
+    const has = (v) => hand.some(t => t.c === last.c && t.v === v);
+    return (has(last.v-2) && has(last.v-1)) || (has(last.v-1) && has(last.v+1)) || (has(last.v+1) && has(last.v+2));
+}
+
+init();
 </script>
-
 </body>
 </html>
