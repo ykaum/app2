@@ -3,241 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mahjong 4P Battle - Final Edition</title>
+    <title>Mahjong: Melds Edition</title>
     <style>
-        :root { --bg: #04140a; --table: #1a5a35; --accent: #ffcc00; --white: #fdfdfd; }
+        :root { --bg: #04140a; --table: #1a5a35; --accent: #ffcc00; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; background: var(--bg); color: white; font-family: "Hiragino Mincho ProN", serif; overflow: hidden; height: 100vh; }
-        
-        #game-screen { position: relative; width: 100vw; height: 100vh; background: radial-gradient(circle, var(--table) 0%, #051a10 100%); display: flex; align-items: center; justify-content: center; }
+        body { margin: 0; background: var(--bg); color: white; font-family: sans-serif; overflow: hidden; height: 100vh; }
+        #game-screen { position: relative; width: 100vw; height: 100vh; background: radial-gradient(circle, var(--table) 0%, #051a10 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
-        /* --- 牌のデザイン --- */
-        .tile { 
-            width: 34px; height: 48px; background: #fff; border-radius: 4px; border: 1px solid #999; border-bottom: 5px solid #bbb;
-            display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; box-shadow: 2px 2px 5px rgba(0,0,0,0.4);
-        }
+        /* 牌・副露エリアのレイアウト */
+        .hand-container { display: flex; align-items: flex-end; gap: 10px; }
+        .hand { display: flex; gap: 2px; }
+        .melds { display: flex; gap: 5px; margin-left: 10px; }
+        .meld-group { display: flex; gap: 1px; transform: scale(0.9); origin: bottom; }
+
+        .tile { width: 34px; height: 48px; background: #fff; border-radius: 4px; border: 1px solid #999; border-bottom: 5px solid #bbb; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; box-shadow: 2px 2px 5px rgba(0,0,0,0.4); color: #000; }
+        .tile.sideways { transform: rotate(-90deg); margin: 0 5px; border-bottom: 5px solid #bbb; } /* 鳴いた牌の横向き */
         .tile.hidden { background: linear-gradient(135deg, #3d7a55 0%, #1a3a2a 100%); border-bottom-color: #0d1a13; color: transparent; }
-        .tile.dora { box-shadow: 0 0 15px var(--accent); border-color: var(--accent); }
-        .tile.tsumo { margin-left: 10px; }
+        
+        /* 牌面デザイン */
+        .design { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+        .m-val { font-size: 19px; font-weight: 900; color: #d32f2f; }
+        .z-val { font-size: 21px; font-weight: 900; }
 
-        .design { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2px; pointer-events: none; }
-        .m-val { font-size: 20px; font-weight: 900; color: #d32f2f; line-height: 1; }
-        .m-suit { font-size: 8px; color: #d32f2f; font-weight: bold; }
-        .z-val { font-size: 22px; font-weight: 900; }
-        .z-red { color: #d32f2f; } .z-green { color: #2e7d32; } .z-black { color: #222; }
+        /* UI */
+        #center-panel { width: 160px; height: 120px; background: rgba(0,0,0,0.7); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.2); }
+        #controls { position: absolute; bottom: 180px; display: flex; gap: 8px; z-index: 100; }
+        button { padding: 10px 20px; border-radius: 20px; border: none; background: #444; color: white; font-weight: bold; display: none; cursor: pointer; box-shadow: 0 4px 0 #222; }
+        button.active { display: block; background: #e67e22; }
 
-        /* 筒子ドット */
-        .p-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; }
-        .dot { width: 7px; height: 7px; border-radius: 50%; background: #1976d2; border: 1px solid rgba(0,0,0,0.1); }
-        .dot.v1 { width: 20px; height: 20px; border: 3px double #fff; outline: 1px solid #1976d2; }
-        .dot.red { background: #d32f2f; }
-
-        /* 索子竹 */
-        .s-box { display: flex; flex-wrap: wrap; gap: 1px; justify-content: center; width: 24px; }
-        .bamboo { width: 4px; height: 14px; background: #2e7d32; border-radius: 1px; border: 1px solid #1b5e20; }
-        .bamboo.red { background: #d32f2f; }
-
-        /* --- レイアウト --- */
         .player-area { position: absolute; display: flex; flex-direction: column; align-items: center; }
         .south { bottom: 20px; width: 100%; }
-        .north { top: 20px; transform: rotate(180deg); }
-        .east { right: 20px; transform: rotate(-90deg); }
-        .west { left: 20px; transform: rotate(90deg); }
-
-        .river { display: grid; grid-template-columns: repeat(6, 20px); gap: 2px; width: 132px; height: 70px; margin: 10px; }
-        .river .tile { width: 20px; height: 28px; border-bottom-width: 2px; cursor: default; }
-        .river .m-val, .river .z-val { font-size: 12px; } .river .dot { width: 4px; height: 4px; } .river .dot.v1 { width: 10px; height: 10px; } .river .bamboo { width: 3px; height: 8px; }
-
-        .hand { display: flex; gap: 2px; }
-        .info-tag { background: rgba(0,0,0,0.7); padding: 4px 12px; border-radius: 15px; font-size: 12px; margin-bottom: 5px; border: 1px solid transparent; }
-        .active-turn { border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
-
-        /* --- センターパネル --- */
-        #center-panel { width: 140px; height: 110px; background: rgba(0,0,0,0.6); border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
-
-        /* --- ボタン --- */
-        #controls { position: absolute; bottom: 160px; display: flex; gap: 8px; z-index: 100; }
-        button { padding: 10px 20px; border-radius: 20px; border: none; background: #333; color: white; font-weight: bold; display: none; cursor: pointer; }
-        button.show { display: block; background: #e67e22; }
-
-        #msg-layer { position: fixed; font-size: 50px; font-weight: 900; color: white; text-shadow: 0 0 15px #000; pointer-events: none; z-index: 500; display: none; }
+        .river { display: grid; grid-template-columns: repeat(6, 20px); gap: 2px; margin: 10px; height: 60px; }
+        .river .tile { width: 20px; height: 28px; border-bottom-width: 2px; font-size: 10px; }
     </style>
 </head>
 <body>
 
 <div id="game-screen">
-    <div id="msg-layer"></div>
     <div id="center-panel">
-        <div style="color:var(--accent); font-weight:bold; font-size:14px;">東 1 局</div>
-        <div id="wall-count" style="font-size:12px; margin:5px 0;">山: 70</div>
-        <div id="dora-area" style="display:flex; gap:2px;"></div>
+        <div id="info-round" style="color:var(--accent); font-weight:bold;">東1局</div>
+        <div id="info-wall" style="font-size:12px; margin:5px 0;">山: 70</div>
+        <div id="info-dora" style="display:flex;"></div>
     </div>
 
     <div id="controls">
-        <button id="btn-riichi" onclick="onRiichi()">リーチ</button>
-        <button id="btn-tsumo" onclick="onWin('TSUMO')">ツモ</button>
-        <button id="btn-ron" onclick="onWin('RON')">ロン</button>
-        <button id="btn-pass" onclick="onPass()">パス</button>
+        <button id="btn-pon" onclick="onMeld('PON')">ポン</button>
+        <button id="btn-chii" onclick="onMeld('CHII')">チー</button>
+        <button id="btn-kan" onclick="onMeld('KAN')">カン</button>
+        <button id="btn-ron" onclick="onWin()">ロン</button>
+        <button id="btn-pass" onclick="onPass()" style="background:#666">パス</button>
     </div>
 
-    <div class="player-area north" id="area-2">
-        <div class="hand" id="hand-2"></div>
-        <div class="river" id="river-2"></div>
-        <div class="info-tag" id="info-2">CPU 2: 25000</div>
-    </div>
-    <div class="player-area east" id="area-1">
-        <div class="hand" id="hand-1"></div>
-        <div class="river" id="river-1"></div>
-        <div class="info-tag" id="info-1">CPU 1: 25000</div>
-    </div>
-    <div class="player-area west" id="area-3">
-        <div class="hand" id="hand-3"></div>
-        <div class="river" id="river-3"></div>
-        <div class="info-tag" id="info-3">CPU 3: 25000</div>
-    </div>
-    <div class="player-area south" id="area-0">
-        <div class="info-tag" id="info-0">YOU: 25000</div>
+    <div class="player-area south">
         <div class="river" id="river-0"></div>
-        <div class="hand" id="hand-0"></div>
+        <div class="hand-container">
+            <div class="hand" id="hand-0"></div>
+            <div class="melds" id="melds-0"></div>
+        </div>
     </div>
 </div>
 
 <script>
-/**
- * 完全版 麻雀ロジック: 4人対戦 & ランダム配牌
- */
-const KANJI = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
-const JIHAI = { "E":"東", "S":"南", "W":"西", "N":"北", "P":"白", "F":"發", "C":"中" };
+const SUITS = ['m', 'p', 's', 'z'];
+const JIHAI = {1:'東', 2:'南', 3:'西', 4:'北', 5:'白', 6:'發', 7:'中'};
+let deck = [], players = [], turn = 0, dora = null, lastDiscard = null;
 
-let deck = [], players = [], turn = 0, dora = null, lastDiscard = null, isWaiting = false;
-
-function initGame() {
-    // 1. 山札(136枚)の生成
+function init() {
     deck = [];
-    ['m','p','s'].forEach(c => { for(let v=1; v<=9; v++) for(let n=0; n<4; n++) deck.push({c, v}); });
-    Object.keys(JIHAI).forEach(v => { for(let n=0; n<4; n++) deck.push({c:'z', v}); });
-    
-    // 2. 洗牌（フィッシャー・イェーツのシャッフル）
-    for (let i = deck.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [deck[i], deck[j]] = [deck[j], deck[i]];
-    }
-
-    // 3. ドラ決定
-    dora = deck.pop();
-    document.getElementById('dora-area').innerHTML = createTileHTML(dora);
-
-    // 4. プレイヤー初期化 & 配牌
-    players = Array.from({length:4}, (_, i) => ({
-        id: i, score: 25000, hand: [], river: [], riichi: false, isAI: i !== 0
-    }));
-
-    players.forEach(p => {
-        p.hand = deck.splice(0, 13).sort(sortTiles);
+    SUITS.forEach(s => {
+        let max = (s === 'z') ? 7 : 9;
+        for(let v=1; v<=max; v++) for(let n=0; n<4; n++) deck.push({s, v});
     });
+    deck.sort(() => Math.random() - 0.5);
+    dora = deck.pop();
+    document.getElementById('info-dora').innerHTML = createTileHTML(dora);
 
+    players = [{ id: 0, hand: [], river: [], melds: [], isAI: false }];
+    // デモ用に1人対戦で副露チェックを回します
+    players[0].hand = deck.splice(0, 13).sort(sortFunc);
+    
     startTurn();
 }
 
-function sortTiles(a, b) {
-    if(a.c !== b.c) return a.c.localeCompare(b.c);
-    return a.v.toString().localeCompare(b.v.toString());
-}
+function sortFunc(a, b) { return a.s !== b.s ? SUITS.indexOf(a.s) - SUITS.indexOf(b.s) : a.v - b.v; }
 
-function createTileHTML(tile, isHidden = false, isTsumo = false) {
-    if(isHidden) return `<div class="tile hidden">?</div>`;
+function createTileHTML(t, isHidden=false, isTsumo=false) {
     let content = '';
-    const tClass = isTsumo ? 'tsumo' : '';
-    const dClass = (tile.c === dora.c && tile.v === dora.v) ? 'dora' : '';
-
-    if (tile.c === 'm') {
-        content = `<div class="design"><span class="m-val">${KANJI[tile.v]}</span><span class="m-suit">萬</span></div>`;
-    } else if (tile.c === 'p') {
-        let dots = '';
-        for(let i=0; i<tile.v; i++) dots += `<div class="dot ${tile.v===1?'v1':''} ${(tile.v===5&&i===2)?'red':''}"></div>`;
-        content = `<div class="design"><div class="p-grid" style="grid-template-columns:repeat(${tile.v===1?1:2},1fr)">${dots}</div></div>`;
-    } else if (tile.c === 's') {
-        let sticks = '';
-        for(let i=0; i<tile.v; i++) sticks += `<div class="bamboo ${tile.v===1?'red':''}"></div>`;
-        content = `<div class="design"><div class="s-box">${sticks}</div></div>`;
-    } else if (tile.c === 'z') {
-        let zColor = tile.v === 'F' ? 'z-green' : (tile.v === 'C' ? 'z-red' : 'z-black');
-        content = `<div class="design" style="${tile.v==='P'?'border:1px solid #ddd;border-radius:2px;margin:2px':''}"><span class="z-val ${zColor}">${tile.v==='P'?'':JIHAI[tile.v]}</span></div>`;
-    }
-    return `<div class="tile ${tClass} ${dClass}">${content}</div>`;
+    if(t.s === 'm') content = `<span class="m-val">${t.v}</span><span style="font-size:8px;color:#d32f2f">萬</span>`;
+    else if(t.s === 'z') content = `<span class="z-val">${JIHAI[t.v]}</span>`;
+    else content = `<span>${t.v}${t.s}</span>`;
+    return `<div class="tile ${isTsumo?'tsumo':''}">${content}</div>`;
 }
 
 function startTurn() {
-    if(deck.length <= 14) return showMsg("流局");
-    const p = players[turn];
+    const p = players[0];
     const t = deck.shift();
     p.hand.push(t);
     updateUI();
-
-    if(!p.isAI) {
-        // プレイヤーの番
-        if(checkWin(p.hand)) document.getElementById('btn-tsumo').classList.add('show');
-    } else {
-        // AIの番: 1秒後に自動打牌
-        setTimeout(() => {
-            const idx = Math.floor(Math.random() * p.hand.length); // 簡易AI: ランダム打牌
-            discard(p, idx);
-        }, 1000);
-    }
-}
-
-function discard(p, idx) {
-    lastDiscard = p.hand.splice(idx, 1)[0];
-    p.river.push(lastDiscard);
-    p.hand.sort(sortTiles);
-    updateUI();
-
-    // ロン判定チェック（他プレイヤー）
-    if(turn !== 0 && checkWin([...players[0].hand, lastDiscard])) {
-        isWaiting = true;
-        document.getElementById('btn-ron').classList.add('show');
-        document.getElementById('btn-pass').classList.add('show');
-        return;
-    }
-
-    turn = (turn + 1) % 4;
-    startTurn();
 }
 
 function updateUI() {
-    players.forEach(p => {
-        const h = document.getElementById(`hand-${p.id}`);
-        h.innerHTML = p.hand.map((t, i) => {
-            const wrap = document.createElement('div');
-            wrap.innerHTML = createTileHTML(t, p.isAI, i === p.hand.length-1);
-            if(!p.isAI) wrap.firstChild.onclick = () => discard(p, i);
-            return wrap.innerHTML;
-        }).join('');
+    const p = players[0];
+    const h = document.getElementById('hand-0');
+    h.innerHTML = p.hand.map((t, i) => {
+        const wrap = document.createElement('div');
+        wrap.innerHTML = createTileHTML(t, false, i === p.hand.length-1);
+        wrap.firstChild.onclick = () => discard(i);
+        return wrap.innerHTML;
+    }).join('');
 
-        document.getElementById(`river-${p.id}`).innerHTML = p.river.map(t => createTileHTML(t)).join('');
-        document.getElementById(`info-${p.id}`).className = `info-tag ${turn === p.id ? 'active-turn' : ''}`;
-    });
-    document.getElementById('wall-count').innerText = `山: ${deck.length}`;
+    const m = document.getElementById('melds-0');
+    m.innerHTML = p.melds.map(meld => `
+        <div class="meld-group">
+            ${meld.tiles.map((t, i) => `<div class="tile ${i===0?'sideways':''}">${createTileHTML(t)}</div>`).join('')}
+        </div>
+    `).join('');
+    
+    document.getElementById('info-wall').innerText = `山: ${deck.length}`;
 }
 
-function checkWin(hand) {
-    // 判定ロジック（デモ用に常にFalse、特定の役満条件などで拡張可能）
-    return false; 
+function discard(idx) {
+    const p = players[0];
+    lastDiscard = p.hand.splice(idx, 1)[0];
+    p.river.push(lastDiscard);
+    p.hand.sort(sortFunc);
+    
+    // 捨てた後に「擬似的な相手の捨て牌」を作ってポン・チー判定をシミュレート
+    setTimeout(simulateEnemyTurn, 500);
 }
 
-function showMsg(txt) {
-    const m = document.getElementById('msg-layer');
-    m.innerText = txt; m.style.display = 'block';
-    setTimeout(() => m.style.display = 'none', 2000);
+function simulateEnemyTurn() {
+    // デモ用にランダムな牌を「相手が捨てた」ことにする
+    const enemyTile = deck.shift();
+    lastDiscard = enemyTile;
+    checkMeldable(enemyTile);
+}
+
+function checkMeldable(tile) {
+    const p = players[0];
+    let canPon = p.hand.filter(t => t.s === tile.s && t.v === tile.v).length >= 2;
+    let canChii = false; // チーの判定は複雑なため今回はポンを優先表示
+    
+    if(canPon) document.getElementById('btn-pon').classList.add('active');
+    document.getElementById('btn-pass').classList.add('active');
+}
+
+function onMeld(type) {
+    const p = players[0];
+    if(type === 'PON') {
+        const matches = p.hand.filter(t => t.s === lastDiscard.s && t.v === lastDiscard.v).slice(0, 2);
+        // 手牌から削除
+        matches.forEach(m => {
+            const idx = p.hand.findIndex(t => t === m);
+            p.hand.splice(idx, 1);
+        });
+        // 副露に追加
+        p.melds.push({ type: 'PON', tiles: [lastDiscard, ...matches] });
+    }
+    onPass();
 }
 
 function onPass() {
-    document.querySelectorAll('button').forEach(b => b.classList.remove('show'));
-    turn = (turn + 1) % 4;
-    startTurn();
+    document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    updateUI();
 }
 
-initGame();
+init();
 </script>
 </body>
 </html>
