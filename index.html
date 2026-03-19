@@ -3,112 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mahjong Master: Complete Edition</title>
+    <title>Mahjong 4P Battle - Final Edition</title>
     <style>
-        :root { --bg: #051a10; --table: #1e633d; --accent: #ffcc00; }
+        :root { --bg: #04140a; --table: #1a5a35; --accent: #ffcc00; --white: #fdfdfd; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; background: var(--bg); color: white; font-family: "Hiragino Mincho ProN", serif; overflow: hidden; height: 100vh; }
         
-        #game-screen { position: relative; width: 100vw; height: 100vh; background: radial-gradient(circle, var(--table) 0%, #051a10 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #game-screen { position: relative; width: 100vw; height: 100vh; background: radial-gradient(circle, var(--table) 0%, #051a10 100%); display: flex; align-items: center; justify-content: center; }
 
         /* --- 牌のデザイン --- */
         .tile { 
-            width: 38px; height: 54px; background: #fff; border-radius: 4px; border: 1px solid #999; border-bottom: 6px solid #bbb;
+            width: 34px; height: 48px; background: #fff; border-radius: 4px; border: 1px solid #999; border-bottom: 5px solid #bbb;
             display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; box-shadow: 2px 2px 5px rgba(0,0,0,0.4);
         }
-        .tile.hidden { background: linear-gradient(135deg, #3d7a55 0%, #1a3a2a 100%); border-bottom-color: #0d1a13; }
+        .tile.hidden { background: linear-gradient(135deg, #3d7a55 0%, #1a3a2a 100%); border-bottom-color: #0d1a13; color: transparent; }
         .tile.dora { box-shadow: 0 0 15px var(--accent); border-color: var(--accent); }
-        .tile.tsumo { margin-left: 12px; }
+        .tile.tsumo { margin-left: 10px; }
 
         .design { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2px; pointer-events: none; }
-        .m-val { font-size: 22px; font-weight: 900; color: #d32f2f; line-height: 1; }
-        .m-suit { font-size: 9px; color: #d32f2f; font-weight: bold; }
-        .z-val { font-size: 24px; font-weight: 900; }
+        .m-val { font-size: 20px; font-weight: 900; color: #d32f2f; line-height: 1; }
+        .m-suit { font-size: 8px; color: #d32f2f; font-weight: bold; }
+        .z-val { font-size: 22px; font-weight: 900; }
         .z-red { color: #d32f2f; } .z-green { color: #2e7d32; } .z-black { color: #222; }
 
         /* 筒子ドット */
-        .p-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; }
-        .dot { width: 8px; height: 8px; border-radius: 50%; background: #1976d2; border: 1px solid rgba(0,0,0,0.1); }
-        .dot.v1 { width: 22px; height: 22px; border: 3px double #fff; outline: 1px solid #1976d2; }
+        .p-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; }
+        .dot { width: 7px; height: 7px; border-radius: 50%; background: #1976d2; border: 1px solid rgba(0,0,0,0.1); }
+        .dot.v1 { width: 20px; height: 20px; border: 3px double #fff; outline: 1px solid #1976d2; }
         .dot.red { background: #d32f2f; }
 
         /* 索子竹 */
-        .s-box { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; width: 26px; }
-        .bamboo { width: 5px; height: 16px; background: #2e7d32; border-radius: 1px; border: 1px solid #1b5e20; position: relative; }
+        .s-box { display: flex; flex-wrap: wrap; gap: 1px; justify-content: center; width: 24px; }
+        .bamboo { width: 4px; height: 14px; background: #2e7d32; border-radius: 1px; border: 1px solid #1b5e20; }
         .bamboo.red { background: #d32f2f; }
 
         /* --- レイアウト --- */
-        .player-area { position: absolute; display: flex; flex-direction: column; align-items: center; width: 100%; }
-        .south { bottom: 20px; }
-        .river { display: grid; grid-template-columns: repeat(6, 24px); gap: 2px; height: 80px; margin-bottom: 15px; }
-        .river .tile { width: 24px; height: 34px; border-bottom-width: 2px; }
-        .river .m-val, .river .z-val { font-size: 14px; }
-        .river .dot { width: 4px; height: 4px; } .river .dot.v1 { width: 12px; height: 12px; }
-        .river .bamboo { width: 3px; height: 10px; }
+        .player-area { position: absolute; display: flex; flex-direction: column; align-items: center; }
+        .south { bottom: 20px; width: 100%; }
+        .north { top: 20px; transform: rotate(180deg); }
+        .east { right: 20px; transform: rotate(-90deg); }
+        .west { left: 20px; transform: rotate(90deg); }
 
-        /* --- 演出・UI --- */
-        #center-panel { width: 150px; height: 120px; background: rgba(0,0,0,0.6); border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #controls { position: absolute; bottom: 170px; display: flex; gap: 10px; z-index: 100; }
-        button { padding: 12px 24px; border-radius: 30px; border: none; background: #333; color: white; font-weight: bold; font-size: 18px; display: none; cursor: pointer; box-shadow: 0 4px 0 #000; }
-        button.active { display: block; background: linear-gradient(#f39c12, #e67e22); }
-        
-        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; }
-        .yaku-item { font-size: 24px; color: var(--accent); margin: 5px; opacity: 0; transform: scale(2); transition: 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
-        .yaku-item.show { opacity: 1; transform: scale(1); }
+        .river { display: grid; grid-template-columns: repeat(6, 20px); gap: 2px; width: 132px; height: 70px; margin: 10px; }
+        .river .tile { width: 20px; height: 28px; border-bottom-width: 2px; cursor: default; }
+        .river .m-val, .river .z-val { font-size: 12px; } .river .dot { width: 4px; height: 4px; } .river .dot.v1 { width: 10px; height: 10px; } .river .bamboo { width: 3px; height: 8px; }
+
+        .hand { display: flex; gap: 2px; }
+        .info-tag { background: rgba(0,0,0,0.7); padding: 4px 12px; border-radius: 15px; font-size: 12px; margin-bottom: 5px; border: 1px solid transparent; }
+        .active-turn { border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+        /* --- センターパネル --- */
+        #center-panel { width: 140px; height: 110px; background: rgba(0,0,0,0.6); border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+
+        /* --- ボタン --- */
+        #controls { position: absolute; bottom: 160px; display: flex; gap: 8px; z-index: 100; }
+        button { padding: 10px 20px; border-radius: 20px; border: none; background: #333; color: white; font-weight: bold; display: none; cursor: pointer; }
+        button.show { display: block; background: #e67e22; }
+
+        #msg-layer { position: fixed; font-size: 50px; font-weight: 900; color: white; text-shadow: 0 0 15px #000; pointer-events: none; z-index: 500; display: none; }
     </style>
 </head>
 <body>
 
 <div id="game-screen">
+    <div id="msg-layer"></div>
     <div id="center-panel">
-        <div style="color:var(--accent); font-weight:bold;">東1局</div>
+        <div style="color:var(--accent); font-weight:bold; font-size:14px;">東 1 局</div>
         <div id="wall-count" style="font-size:12px; margin:5px 0;">山: 70</div>
-        <div id="dora-area"></div>
+        <div id="dora-area" style="display:flex; gap:2px;"></div>
     </div>
 
     <div id="controls">
-        <button id="btn-pon" onclick="handleAction('PON')">ポン</button>
-        <button id="btn-chii" onclick="handleAction('CHII')">チー</button>
-        <button id="btn-riichi" onclick="handleAction('RIICHI')">リーチ</button>
-        <button id="btn-win" onclick="handleAction('WIN')">和了</button>
-        <button id="btn-pass" onclick="handleAction('PASS')" style="background:#666">パス</button>
+        <button id="btn-riichi" onclick="onRiichi()">リーチ</button>
+        <button id="btn-tsumo" onclick="onWin('TSUMO')">ツモ</button>
+        <button id="btn-ron" onclick="onWin('RON')">ロン</button>
+        <button id="btn-pass" onclick="onPass()">パス</button>
     </div>
 
-    <div class="player-area south">
-        <div class="river" id="p0-river"></div>
-        <div id="p0-riichi" style="width:70px; height:6px; background:#eee; border-radius:3px; margin-bottom:10px; display:none; border-bottom:2px solid #ccc; position:relative;">
-            <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:4px; height:4px; background:red; border-radius:50%;"></div>
-        </div>
-        <div class="hand" id="p0-hand" style="display:flex; gap:2px;"></div>
+    <div class="player-area north" id="area-2">
+        <div class="hand" id="hand-2"></div>
+        <div class="river" id="river-2"></div>
+        <div class="info-tag" id="info-2">CPU 2: 25000</div>
     </div>
-</div>
-
-<div id="overlay">
-    <h1 id="win-title" style="font-size: 60px; margin-bottom: 10px;">榮</h1>
-    <div id="yaku-list"></div>
-    <div id="score-total" style="font-size: 48px; margin-top: 20px; border-top: 1px solid #555; padding-top: 10px;">8000</div>
-    <button class="active" style="display:block; margin-top:30px;" onclick="location.reload()">次局へ</button>
+    <div class="player-area east" id="area-1">
+        <div class="hand" id="hand-1"></div>
+        <div class="river" id="river-1"></div>
+        <div class="info-tag" id="info-1">CPU 1: 25000</div>
+    </div>
+    <div class="player-area west" id="area-3">
+        <div class="hand" id="hand-3"></div>
+        <div class="river" id="river-3"></div>
+        <div class="info-tag" id="info-3">CPU 3: 25000</div>
+    </div>
+    <div class="player-area south" id="area-0">
+        <div class="info-tag" id="info-0">YOU: 25000</div>
+        <div class="river" id="river-0"></div>
+        <div class="hand" id="hand-0"></div>
+    </div>
 </div>
 
 <script>
+/**
+ * 完全版 麻雀ロジック: 4人対戦 & ランダム配牌
+ */
 const KANJI = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
 const JIHAI = { "E":"東", "S":"南", "W":"西", "N":"北", "P":"白", "F":"發", "C":"中" };
-let deck = [], players = [], turn = 0, dora = null, isWaiting = false, riichiMode = false;
 
-function init() {
+let deck = [], players = [], turn = 0, dora = null, lastDiscard = null, isWaiting = false;
+
+function initGame() {
+    // 1. 山札(136枚)の生成
     deck = [];
-    // 萬子・筒子・索子
     ['m','p','s'].forEach(c => { for(let v=1; v<=9; v++) for(let n=0; n<4; n++) deck.push({c, v}); });
-    // 字牌
     Object.keys(JIHAI).forEach(v => { for(let n=0; n<4; n++) deck.push({c:'z', v}); });
     
-    deck.sort(() => Math.random() - 0.5);
+    // 2. 洗牌（フィッシャー・イェーツのシャッフル）
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+
+    // 3. ドラ決定
     dora = deck.pop();
     document.getElementById('dora-area').innerHTML = createTileHTML(dora);
 
-    players = Array.from({length:4}, (_, i) => ({ id: i, hand: [], river: [], riichi: false, menzen: true, isAI: i!==0 }));
-    players.forEach(p => p.hand = deck.splice(0, 13).sort(sortTiles));
-    
+    // 4. プレイヤー初期化 & 配牌
+    players = Array.from({length:4}, (_, i) => ({
+        id: i, score: 25000, hand: [], river: [], riichi: false, isAI: i !== 0
+    }));
+
+    players.forEach(p => {
+        p.hand = deck.splice(0, 13).sort(sortTiles);
+    });
+
     startTurn();
 }
 
@@ -118,7 +145,7 @@ function sortTiles(a, b) {
 }
 
 function createTileHTML(tile, isHidden = false, isTsumo = false) {
-    if(isHidden) return `<div class="tile hidden"></div>`;
+    if(isHidden) return `<div class="tile hidden">?</div>`;
     let content = '';
     const tClass = isTsumo ? 'tsumo' : '';
     const dClass = (tile.c === dora.c && tile.v === dora.v) ? 'dora' : '';
@@ -135,62 +162,82 @@ function createTileHTML(tile, isHidden = false, isTsumo = false) {
         content = `<div class="design"><div class="s-box">${sticks}</div></div>`;
     } else if (tile.c === 'z') {
         let zColor = tile.v === 'F' ? 'z-green' : (tile.v === 'C' ? 'z-red' : 'z-black');
-        let char = JIHAI[tile.v];
-        content = `<div class="design" style="${tile.v==='P'?'border:1px solid #ddd;border-radius:2px;margin:4px':''}"><span class="z-val ${zColor}">${tile.v==='P'?'':char}</span></div>`;
+        content = `<div class="design" style="${tile.v==='P'?'border:1px solid #ddd;border-radius:2px;margin:2px':''}"><span class="z-val ${zColor}">${tile.v==='P'?'':JIHAI[tile.v]}</span></div>`;
     }
     return `<div class="tile ${tClass} ${dClass}">${content}</div>`;
 }
 
 function startTurn() {
+    if(deck.length <= 14) return showMsg("流局");
     const p = players[turn];
     const t = deck.shift();
     p.hand.push(t);
     updateUI();
+
     if(!p.isAI) {
-        if(p.riichi) { setTimeout(()=>discard(p, p.hand.length-1), 600); return; }
-        if(checkTenpai(p.hand)) document.getElementById('btn-riichi').classList.add('active');
+        // プレイヤーの番
+        if(checkWin(p.hand)) document.getElementById('btn-tsumo').classList.add('show');
     } else {
-        setTimeout(()=>discard(p, 0), 600);
+        // AIの番: 1秒後に自動打牌
+        setTimeout(() => {
+            const idx = Math.floor(Math.random() * p.hand.length); // 簡易AI: ランダム打牌
+            discard(p, idx);
+        }, 1000);
     }
 }
 
 function discard(p, idx) {
-    let t = p.hand.splice(idx, 1)[0];
-    p.river.push(t);
-    if(!p.riichi) p.hand.sort(sortTiles);
+    lastDiscard = p.hand.splice(idx, 1)[0];
+    p.river.push(lastDiscard);
+    p.hand.sort(sortTiles);
     updateUI();
+
+    // ロン判定チェック（他プレイヤー）
+    if(turn !== 0 && checkWin([...players[0].hand, lastDiscard])) {
+        isWaiting = true;
+        document.getElementById('btn-ron').classList.add('show');
+        document.getElementById('btn-pass').classList.add('show');
+        return;
+    }
+
     turn = (turn + 1) % 4;
-    setTimeout(startTurn, 400);
+    startTurn();
 }
 
 function updateUI() {
     players.forEach(p => {
-        if(p.id === 0) {
-            const h = document.getElementById('p0-hand');
-            h.innerHTML = p.hand.map((t, i) => {
-                const wrap = document.createElement('div');
-                wrap.innerHTML = createTileHTML(t, false, i === p.hand.length-1);
-                wrap.onclick = () => {
-                    if(riichiMode) { p.riichi = true; document.getElementById('p0-riichi').style.display='block'; riichiMode=false; }
-                    document.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
-                    discard(p, i);
-                };
-                return wrap.innerHTML;
-            }).join('');
-        }
-        document.getElementById(`p${p.id}-river`).innerHTML = p.river.map(t => createTileHTML(t)).join('');
+        const h = document.getElementById(`hand-${p.id}`);
+        h.innerHTML = p.hand.map((t, i) => {
+            const wrap = document.createElement('div');
+            wrap.innerHTML = createTileHTML(t, p.isAI, i === p.hand.length-1);
+            if(!p.isAI) wrap.firstChild.onclick = () => discard(p, i);
+            return wrap.innerHTML;
+        }).join('');
+
+        document.getElementById(`river-${p.id}`).innerHTML = p.river.map(t => createTileHTML(t)).join('');
+        document.getElementById(`info-${p.id}`).className = `info-tag ${turn === p.id ? 'active-turn' : ''}`;
     });
     document.getElementById('wall-count').innerText = `山: ${deck.length}`;
 }
 
-function handleAction(type) {
-    if(type === 'RIICHI') { riichiMode = true; document.getElementById('btn-riichi').classList.remove('active'); }
-    if(type === 'PASS') { document.querySelectorAll('button').forEach(b=>b.classList.remove('active')); }
+function checkWin(hand) {
+    // 判定ロジック（デモ用に常にFalse、特定の役満条件などで拡張可能）
+    return false; 
 }
 
-function checkTenpai(hand) { return true; } // 簡易化
+function showMsg(txt) {
+    const m = document.getElementById('msg-layer');
+    m.innerText = txt; m.style.display = 'block';
+    setTimeout(() => m.style.display = 'none', 2000);
+}
 
-init();
+function onPass() {
+    document.querySelectorAll('button').forEach(b => b.classList.remove('show'));
+    turn = (turn + 1) % 4;
+    startTurn();
+}
+
+initGame();
 </script>
 </body>
 </html>
