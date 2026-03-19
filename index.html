@@ -3,57 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mahjong: Melds Edition</title>
+    <title>Mahjong Master - Complete Edition</title>
     <style>
         :root { --bg: #04140a; --table: #1a5a35; --accent: #ffcc00; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; background: var(--bg); color: white; font-family: sans-serif; overflow: hidden; height: 100vh; }
-        #game-screen { position: relative; width: 100vw; height: 100vh; background: radial-gradient(circle, var(--table) 0%, #051a10 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; }
-
-        /* 牌・副露エリアのレイアウト */
-        .hand-container { display: flex; align-items: flex-end; gap: 10px; }
-        .hand { display: flex; gap: 2px; }
-        .melds { display: flex; gap: 5px; margin-left: 10px; }
-        .meld-group { display: flex; gap: 1px; transform: scale(0.9); origin: bottom; }
-
-        .tile { width: 34px; height: 48px; background: #fff; border-radius: 4px; border: 1px solid #999; border-bottom: 5px solid #bbb; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; box-shadow: 2px 2px 5px rgba(0,0,0,0.4); color: #000; }
-        .tile.sideways { transform: rotate(-90deg); margin: 0 5px; border-bottom: 5px solid #bbb; } /* 鳴いた牌の横向き */
-        .tile.hidden { background: linear-gradient(135deg, #3d7a55 0%, #1a3a2a 100%); border-bottom-color: #0d1a13; color: transparent; }
+        body { margin: 0; background: var(--bg); color: white; font-family: "Helvetica Neue", "Arial", "Hiragino Sans", sans-serif; overflow: hidden; height: 100vh; }
         
-        /* 牌面デザイン */
+        #game-screen { position: relative; width: 100vw; height: 100vh; background: radial-gradient(circle, var(--table) 0%, #051a10 100%); display: flex; align-items: center; justify-content: center; }
+
+        /* --- 牌グラフィック --- */
+        .tile { 
+            width: 34px; height: 48px; background: #fff; border-radius: 4px; border: 1px solid #999; border-bottom: 5px solid #bbb;
+            display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; box-shadow: 2px 2px 5px rgba(0,0,0,0.4); color: #000;
+        }
+        .tile.hidden { background: linear-gradient(135deg, #3d7a55 0%, #1a3a2a 100%); border-bottom-color: #0d1a13; color: transparent; }
+        .tile.dora { border: 2px solid var(--accent); box-shadow: 0 0 10px var(--accent); }
+        .tile.tsumo { margin-left: 10px; }
+        .tile.sideways { transform: rotate(-90deg); margin: 0 5px; }
+
         .design { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
-        .m-val { font-size: 19px; font-weight: 900; color: #d32f2f; }
+        .m-val { font-size: 19px; font-weight: 900; color: #d32f2f; line-height: 1; }
         .z-val { font-size: 21px; font-weight: 900; }
+        .z-red { color: #d32f2f; } .z-green { color: #2e7d32; }
 
-        /* UI */
-        #center-panel { width: 160px; height: 120px; background: rgba(0,0,0,0.7); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.2); }
-        #controls { position: absolute; bottom: 180px; display: flex; gap: 8px; z-index: 100; }
-        button { padding: 10px 20px; border-radius: 20px; border: none; background: #444; color: white; font-weight: bold; display: none; cursor: pointer; box-shadow: 0 4px 0 #222; }
-        button.active { display: block; background: #e67e22; }
-
+        /* --- レイアウト --- */
         .player-area { position: absolute; display: flex; flex-direction: column; align-items: center; }
         .south { bottom: 20px; width: 100%; }
-        .river { display: grid; grid-template-columns: repeat(6, 20px); gap: 2px; margin: 10px; height: 60px; }
+        .north { top: 20px; transform: rotate(180deg); }
+        .east { right: 20px; transform: rotate(-90deg); }
+        .west { left: 20px; transform: rotate(90deg); }
+
+        .river { display: grid; grid-template-columns: repeat(6, 20px); gap: 2px; width: 132px; height: 60px; margin: 10px; }
         .river .tile { width: 20px; height: 28px; border-bottom-width: 2px; font-size: 10px; }
+
+        .hand-container { display: flex; align-items: flex-end; gap: 5px; }
+        .melds { display: flex; gap: 5px; }
+
+        /* --- UI中央パネル --- */
+        #center-panel { width: 160px; height: 120px; background: rgba(0,0,0,0.7); border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+        #controls { position: absolute; bottom: 180px; display: flex; gap: 8px; z-index: 100; }
+        button { padding: 10px 18px; border-radius: 20px; border: none; background: #444; color: white; font-weight: bold; display: none; cursor: pointer; box-shadow: 0 4px 0 #222; }
+        button.active { display: block; background: #e67e22; }
+
+        /* --- リザルト --- */
+        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .yaku-item { font-size: 24px; color: var(--accent); margin: 5px; opacity: 0; transform: translateY(10px); transition: 0.4s; }
+        .yaku-item.show { opacity: 1; transform: translateY(0); }
     </style>
 </head>
 <body>
 
 <div id="game-screen">
     <div id="center-panel">
-        <div id="info-round" style="color:var(--accent); font-weight:bold;">東1局</div>
-        <div id="info-wall" style="font-size:12px; margin:5px 0;">山: 70</div>
-        <div id="info-dora" style="display:flex;"></div>
+        <div style="color:var(--accent); font-weight:bold; font-size:14px;">東 1 局</div>
+        <div id="wall-count" style="font-size:12px; margin:5px 0;">山: 70</div>
+        <div id="dora-area" style="display:flex; gap:2px;"></div>
     </div>
 
     <div id="controls">
         <button id="btn-pon" onclick="onMeld('PON')">ポン</button>
         <button id="btn-chii" onclick="onMeld('CHII')">チー</button>
-        <button id="btn-kan" onclick="onMeld('KAN')">カン</button>
-        <button id="btn-ron" onclick="onWin()">ロン</button>
-        <button id="btn-pass" onclick="onPass()" style="background:#666">パス</button>
+        <button id="btn-reach" onclick="onReach()">リーチ</button>
+        <button id="btn-win" onclick="onWin()">和了</button>
+        <button id="btn-pass" onclick="onPass()">パス</button>
     </div>
 
+    <div class="player-area north" id="area-2"><div class="hand" id="hand-2"></div><div class="river" id="river-2"></div></div>
+    <div class="player-area east" id="area-1"><div class="hand" id="hand-1"></div><div class="river" id="river-1"></div></div>
+    <div class="player-area west" id="area-3"><div class="hand" id="hand-3"></div><div class="river" id="river-3"></div></div>
     <div class="player-area south">
         <div class="river" id="river-0"></div>
         <div class="hand-container">
@@ -63,109 +80,152 @@
     </div>
 </div>
 
+<div id="overlay">
+    <h1 id="win-title" style="font-size: 50px; color:white;">榮</h1>
+    <div id="yaku-list"></div>
+    <div id="score-display" style="font-size: 40px; margin-top: 20px; color:var(--accent);"></div>
+    <button class="active" style="display:block; margin-top:30px;" onclick="location.reload()">次局へ</button>
+</div>
+
 <script>
+/**
+ * Mahjong Logic & Engine
+ */
+const KANJI = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+const JIHAI = { 1:'東', 2:'南', 3:'西', 4:'北', 5:'白', 6:'發', 7:'中' };
 const SUITS = ['m', 'p', 's', 'z'];
-const JIHAI = {1:'東', 2:'南', 3:'西', 4:'北', 5:'白', 6:'發', 7:'中'};
-let deck = [], players = [], turn = 0, dora = null, lastDiscard = null;
+
+let deck = [], players = [], turn = 0, dora = null, lastDiscard = null, isWaiting = false;
 
 function init() {
     deck = [];
-    SUITS.forEach(s => {
-        let max = (s === 'z') ? 7 : 9;
-        for(let v=1; v<=max; v++) for(let n=0; n<4; n++) deck.push({s, v});
-    });
-    deck.sort(() => Math.random() - 0.5);
-    dora = deck.pop();
-    document.getElementById('info-dora').innerHTML = createTileHTML(dora);
-
-    players = [{ id: 0, hand: [], river: [], melds: [], isAI: false }];
-    // デモ用に1人対戦で副露チェックを回します
-    players[0].hand = deck.splice(0, 13).sort(sortFunc);
+    ['m','p','s'].forEach(s => { for(let v=1; v<=9; v++) for(let n=0; n<4; n++) deck.push({s, v}); });
+    for(let v=1; v<=7; v++) for(let n=0; n<4; n++) deck.push({s:'z', v});
     
+    // シャッフル
+    for(let i=deck.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1)); [deck[i], deck[j]]=[deck[j], deck[i]]; }
+    
+    dora = deck.pop();
+    document.getElementById('dora-area').innerHTML = createTileHTML(dora);
+
+    players = Array.from({length:4}, (_, i) => ({
+        id: i, hand: [], river: [], melds: [], reach: false, isAI: i !== 0
+    }));
+
+    players.forEach(p => p.hand = deck.splice(0, 13).sort(sortFunc));
     startTurn();
 }
 
 function sortFunc(a, b) { return a.s !== b.s ? SUITS.indexOf(a.s) - SUITS.indexOf(b.s) : a.v - b.v; }
 
 function createTileHTML(t, isHidden=false, isTsumo=false) {
+    if(isHidden) return `<div class="tile hidden"></div>`;
     let content = '';
-    if(t.s === 'm') content = `<span class="m-val">${t.v}</span><span style="font-size:8px;color:#d32f2f">萬</span>`;
-    else if(t.s === 'z') content = `<span class="z-val">${JIHAI[t.v]}</span>`;
-    else content = `<span>${t.v}${t.s}</span>`;
-    return `<div class="tile ${isTsumo?'tsumo':''}">${content}</div>`;
+    const dClass = (t.s === dora.s && t.v === dora.v) ? 'dora' : '';
+    
+    if(t.s === 'm') content = `<div class="design"><span class="m-val">${KANJI[t.v]}</span><span style="font-size:8px;color:#d32f2f">萬</span></div>`;
+    else if(t.s === 'z') content = `<div class="design"><span class="z-val ${t.v===6?'z-green':t.v===7?'z-red':''}">${JIHAI[t.v]}</span></div>`;
+    else content = `<div class="design"><span>${t.v}${t.s}</span></div>`;
+
+    return `<div class="tile ${dClass} ${isTsumo?'tsumo':''}">${content}</div>`;
 }
 
 function startTurn() {
-    const p = players[0];
+    if(deck.length <= 14) return alert("流局");
+    const p = players[turn];
     const t = deck.shift();
     p.hand.push(t);
     updateUI();
+
+    if(!p.isAI) {
+        if(analyzeHand(p.hand).han > 0) document.getElementById('btn-win').classList.add('active');
+    } else {
+        setTimeout(() => {
+            if(analyzeHand(p.hand).han > 0) return showResult(p);
+            discard(p, 0);
+        }, 1000);
+    }
 }
 
-function updateUI() {
-    const p = players[0];
-    const h = document.getElementById('hand-0');
-    h.innerHTML = p.hand.map((t, i) => {
-        const wrap = document.createElement('div');
-        wrap.innerHTML = createTileHTML(t, false, i === p.hand.length-1);
-        wrap.firstChild.onclick = () => discard(i);
-        return wrap.innerHTML;
-    }).join('');
-
-    const m = document.getElementById('melds-0');
-    m.innerHTML = p.melds.map(meld => `
-        <div class="meld-group">
-            ${meld.tiles.map((t, i) => `<div class="tile ${i===0?'sideways':''}">${createTileHTML(t)}</div>`).join('')}
-        </div>
-    `).join('');
-    
-    document.getElementById('info-wall').innerText = `山: ${deck.length}`;
-}
-
-function discard(idx) {
-    const p = players[0];
+function discard(p, idx) {
     lastDiscard = p.hand.splice(idx, 1)[0];
     p.river.push(lastDiscard);
     p.hand.sort(sortFunc);
+    updateUI();
+
+    // 他プレイヤーの鳴き・ロン判定
+    if(turn !== 0 && analyzeHand([...players[0].hand, lastDiscard]).han > 0) {
+        document.getElementById('btn-ron').classList.add('active');
+        document.getElementById('btn-pass').classList.add('active');
+        return;
+    }
     
-    // 捨てた後に「擬似的な相手の捨て牌」を作ってポン・チー判定をシミュレート
-    setTimeout(simulateEnemyTurn, 500);
+    turn = (turn + 1) % 4;
+    startTurn();
 }
 
-function simulateEnemyTurn() {
-    // デモ用にランダムな牌を「相手が捨てた」ことにする
-    const enemyTile = deck.shift();
-    lastDiscard = enemyTile;
-    checkMeldable(enemyTile);
+function updateUI() {
+    players.forEach(p => {
+        const h = document.getElementById(`hand-${p.id}`);
+        h.innerHTML = p.hand.map((t, i) => {
+            const wrap = document.createElement('div');
+            wrap.innerHTML = createTileHTML(t, p.isAI, i === p.hand.length-1);
+            if(!p.isAI) wrap.firstChild.onclick = () => {
+                document.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+                discard(p, i);
+            };
+            return wrap.innerHTML;
+        }).join('');
+        document.getElementById(`river-${p.id}`).innerHTML = p.river.map(t => createTileHTML(t)).join('');
+        if(p.id === 0) {
+            document.getElementById('melds-0').innerHTML = p.melds.map(m => `
+                <div class="melds">${m.tiles.map(t => createTileHTML(t)).join('')}</div>
+            `).join('');
+        }
+    });
+    document.getElementById('wall-count').innerText = `山: ${deck.length}`;
 }
 
-function checkMeldable(tile) {
-    const p = players[0];
-    let canPon = p.hand.filter(t => t.s === tile.s && t.v === tile.v).length >= 2;
-    let canChii = false; // チーの判定は複雑なため今回はポンを優先表示
+/** 簡易役判定エンジン */
+function analyzeHand(hand) {
+    const h = [...hand].sort(sortFunc);
+    let res = { han: 0, yakus: [] };
     
-    if(canPon) document.getElementById('btn-pon').classList.add('active');
-    document.getElementById('btn-pass').classList.add('active');
+    // 断么九チェック
+    if(h.every(t => t.s !== 'z' && t.v > 1 && t.v < 9)) res.yakus.push({n:"断么九", h:1});
+    // ドラ
+    let d = h.filter(t => t.s === dora.s && t.v === dora.v).length;
+    if(d > 0) res.yakus.push({n:`ドラ ${d}`, h:d});
+
+    res.han = res.yakus.reduce((a, b) => a + b.h, 0);
+    return res;
 }
 
-function onMeld(type) {
+function showResult(p) {
+    const result = analyzeHand(p.hand);
+    const ov = document.getElementById('overlay');
+    const list = document.getElementById('yaku-list');
+    ov.style.display = 'flex';
+    list.innerHTML = '';
+    result.yakus.forEach((y, i) => {
+        const div = document.createElement('div');
+        div.className = 'yaku-item'; div.innerText = `${y.n} ${y.h}翻`;
+        list.appendChild(div);
+        setTimeout(() => div.classList.add('show'), i * 400);
+    });
+    document.getElementById('score-display').innerText = result.han >= 4 ? "満貫 8000点" : (result.han * 2000) + "点";
+}
+
+function onWin() { showResult(players[0]); }
+function onPass() { document.querySelectorAll('button').forEach(b=>b.classList.remove('active')); turn=(turn+1)%4; startTurn(); }
+function onMeld(type) { 
     const p = players[0];
-    if(type === 'PON') {
-        const matches = p.hand.filter(t => t.s === lastDiscard.s && t.v === lastDiscard.v).slice(0, 2);
-        // 手牌から削除
-        matches.forEach(m => {
-            const idx = p.hand.findIndex(t => t === m);
-            p.hand.splice(idx, 1);
-        });
-        // 副露に追加
-        p.melds.push({ type: 'PON', tiles: [lastDiscard, ...matches] });
+    const match = p.hand.filter(t => t.s === lastDiscard.s && t.v === lastDiscard.v).slice(0, 2);
+    if(match.length === 2) {
+        match.forEach(m => p.hand.splice(p.hand.indexOf(m), 1));
+        p.melds.push({type, tiles: [lastDiscard, ...match]});
     }
     onPass();
-}
-
-function onPass() {
-    document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-    updateUI();
 }
 
 init();
